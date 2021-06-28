@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="8a347bd9-3b50-46d3-a3a8-984fde2b4d18" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="8f61512b-63bd-48f5-a457-e209d86f0d99" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="mule123" database="employee" />
+	</db:config>
+	<file:config name="File_Config" doc:name="File Config" doc:id="2f778a1e-a252-46f4-b9bd-d451625888b8" >
+		<file:connection workingDir="C:\Users\91782\Desktop\Mule Practice Files\scatter" />
+	</file:config>
+	<flow name="scatter-gather-demo-flowFlow" doc:id="ad674716-70ef-47cd-ac34-c0c27009288a" >
+		<http:listener doc:name="Listener" doc:id="85e52e77-5e3b-4f59-b408-c15d5c403fed" config-ref="HTTP_Listener_config" path="/sg"/>
+		<logger level="INFO" doc:name="Start Logger" doc:id="dc9d479b-68cc-4c0b-9e66-2e8730df9ec2" message="Flow has started"/>
+		<ee:transform doc:name="Transform Message" doc:id="74d74b07-bdb5-44d3-b46a-cdfc76eee05c">
+			<ee:message>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="empins" ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	emp_id:payload.emp_id,
+	emp_name:payload.emp_name,
+	emp_status:payload.emp_status
+	
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="1960e4c6-7f54-4bb6-a56b-d8f30f54bbfd" >
+			<route >
+				<db:insert doc:name="Insert into EMP MASTER tabel" doc:id="20871c3a-7f32-4e8d-8760-f00df4f5b29f" config-ref="Database_Config">
+					<db:sql ><![CDATA[insert into emp_master_1(emp_id,emp_name,emp_status) VALUES(:emp_id,:emp_name,:emp_status);]]></db:sql>
+					<db:input-parameters ><![CDATA[#[vars.empins]]]></db:input-parameters>
+				</db:insert>
+			</route>
+			<route >
+				<file:write doc:name="Write into CSV file" doc:id="dea38ec2-71d5-4964-a657-cf4987b8778e" config-ref="File_Config" path="C:\Users\91782\Desktop\Mule Practice Files\scatter\employee.csv">
+					<file:content ><![CDATA[#[vars.empins]]]></file:content>
+				</file:write>
+			</route>
+		</scatter-gather>
+		<logger level="INFO" doc:name="End Logger" doc:id="10affd5f-7078-42d9-aaa4-9254d02f27e2" message="Flow has ended"/>
+	</flow>
+</mule>
